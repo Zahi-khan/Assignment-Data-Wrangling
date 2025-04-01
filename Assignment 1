@@ -1,0 +1,87 @@
+Certainly! Below is a comprehensive Python script for executing the requested data-wrangling operations on the McDonald's Store Reviews dataset. I'll explain each step as we go along:
+
+```python
+import pandas as pd
+import numpy as np
+from sklearn.preprocessing import StandardScaler
+
+# Load the dataset
+file_path = "McDonald_s_Reviews.csv"
+data = pd.read_csv(file_path)
+
+# Overview of the dataset
+print("Initial Dataset Overview:")
+print(data.info())
+print(data.head())
+
+# Handling Missing Values
+# Fill missing latitude and longitude with the mean
+data['latitude'] = pd.to_numeric(data['latitude'], errors='coerce')
+data['longitude'] = pd.to_numeric(data['longitude'], errors='coerce')
+data['latitude'].fillna(data['latitude'].mean(), inplace=True)
+data['longitude'].fillna(data['longitude'].mean(), inplace=True)
+
+# Fill missing reviews with "No review provided"
+data['review'].fillna("No review provided", inplace=True)
+
+# Convert review_time to datetime
+data['review_time'] = pd.to_datetime(data['review_time'], errors='coerce')
+
+# Handling Duplicates
+data.drop_duplicates(inplace=True)
+
+# Addressing Inconsistencies
+# Example: Strip whitespace in string columns (like store_name, category)
+data['store_name'] = data['store_name'].str.strip()
+data['category'] = data['category'].str.strip()
+
+# Outlier Handling
+# Example: Cap latitude and longitude to the 99th percentile
+lat_cap = data['latitude'].quantile(0.99)
+lon_cap = data['longitude'].quantile(0.99)
+data['latitude'] = np.where(data['latitude'] > lat_cap, lat_cap, data['latitude'])
+data['longitude'] = np.where(data['longitude'] > lon_cap, lon_cap, data['longitude'])
+
+# Creating a New Feature
+# Example: Adding a column for review length
+data['review_length'] = data['review'].apply(len)
+
+# Data Aggregation and Summary
+agg_data = data.groupby('store_name').agg({
+    'rating': 'mean',  # Average rating per store
+    'review_length': 'mean',  # Average review length per store
+    'rating_count': 'sum'  # Total rating count per store
+}).reset_index()
+print("Aggregated Data:")
+print(agg_data.head())
+
+# Data Standardization
+scaler = StandardScaler()
+data[['latitude', 'longitude']] = scaler.fit_transform(data[['latitude', 'longitude']])
+
+# Data Binning
+# Example: Binning ratings into categories
+data['rating'] = pd.to_numeric(data['rating'], errors='coerce')
+bins = [0, 2, 4, 5]  # Custom bins: 0-2 (Low), 2-4 (Medium), 4-5 (High)
+labels = ['Low', 'Medium', 'High']
+data['rating_category'] = pd.cut(data['rating'], bins=bins, labels=labels, include_lowest=True)
+
+# Display Cleaned Dataset and Wrangling Report
+print("Cleaned Dataset:")
+print(data.head())
+
+# Data Wrangling Report
+wrangling_report = {
+    "Missing Values Handled": "Yes",
+    "Duplicates Removed": data.duplicated().sum(),
+    "Data Types Converted": data.dtypes.to_dict(),
+    "Inconsistencies Addressed": "String whitespace stripped",
+    "Outliers Capped": f"Latitude/Longitude capped to 99th percentile",
+    "New Feature Created": "review_length",
+    "Aggregated Data Summary": agg_data.describe().to_dict(),
+    "Standardization Applied": ["latitude", "longitude"],
+    "Binning Performed": "Ratings categorized into Low, Medium, High"
+}
+print("Data Wrangling Report:")
+for key, value in wrangling_report.items():
+    print(f"{key}: {value}")
